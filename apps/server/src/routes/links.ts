@@ -75,7 +75,7 @@ async function attachCollectionName(link: typeof linksTable.$inferSelect) {
 
 // GET /links
 router.get("/links", async (req, res): Promise<void> => {
-  const parsed = listLinksQueryParams.safeParse(req.query);
+  const parsed = ListLinksQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -125,7 +125,7 @@ router.get("/links", async (req, res): Promise<void> => {
 
 // POST /links
 router.post("/links", async (req, res): Promise<void> => {
-  const parsed = createLinkBody.safeParse(req.body);
+  const parsed = CreateLinkBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -179,7 +179,7 @@ router.get("/links/stats", async (_req, res): Promise<void> => {
 
 // GET /links/:id
 router.get("/links/:id", async (req, res): Promise<void> => {
-  const params = getLinkParams.safeParse(req.params);
+  const params = GetLinkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -201,13 +201,13 @@ router.get("/links/:id", async (req, res): Promise<void> => {
 
 // PATCH /links/:id
 router.patch("/links/:id", async (req, res): Promise<void> => {
-  const params = updateLinkParams.safeParse(req.params);
+  const params = UpdateLinkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const parsed = updateLinkBody.safeParse(req.body);
+  const parsed = UpdateLinkBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -234,7 +234,7 @@ router.patch("/links/:id", async (req, res): Promise<void> => {
 
 // DELETE /links/:id
 router.delete("/links/:id", async (req, res): Promise<void> => {
-  const params = deleteLinkParams.safeParse(req.params);
+  const params = DeleteLinkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
@@ -255,13 +255,13 @@ router.delete("/links/:id", async (req, res): Promise<void> => {
 
 // PATCH /links/:id/status
 router.patch("/links/:id/status", async (req, res): Promise<void> => {
-  const params = updateLinkStatusParams.safeParse(req.params);
+  const params = UpdateLinkStatusParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
 
-  const parsed = updateLinkStatusBody.safeParse(req.body);
+  const parsed = UpdateLinkStatusBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
