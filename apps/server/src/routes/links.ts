@@ -22,7 +22,9 @@ function isStale(createdAt: Date, status: string): boolean {
   return ageMs > STALE_DAYS * 24 * 60 * 60 * 1000;
 }
 
-function formatLink(row: typeof linksTable.$inferSelect & { collectionName?: string | null }) {
+type FormattableLink = Pick<typeof linksTable.$inferSelect, "id" | "url" | "title" | "description" | "imageUrl" | "siteName" | "favicon" | "aiSummary" | "readingTimeMinutes" | "status" | "tags" | "collectionId" | "notes" | "createdAt"> & { collectionName?: string | null };
+
+function formatLink(row: FormattableLink) {
   return {
     id: row.id,
     url: row.url,
