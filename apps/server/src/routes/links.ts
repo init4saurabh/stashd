@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ilike, or, sql } from "drizzle-orm";
 import { db, linksTable, collectionsTable } from "@stashd/db";
+import { scrapeUrl } from "../lib/scraper";
+import { generateSummary, generateTags, semanticSearch } from "../lib/gemini";
 import {
   ListLinksQueryParams,
   CreateLinkBody,
@@ -10,6 +12,9 @@ import {
   DeleteLinkParams,
   UpdateLinkStatusParams,
   UpdateLinkStatusBody,
+  ScrapeUrlBody,
+  SearchLinksBody,
+  EnrichLinkParams,
 } from "@stashd/api-schema";
 
 const router: IRouter = Router();
@@ -283,4 +288,72 @@ router.patch("/links/:id/status", async (req, res): Promise<void> => {
   res.json(await attachCollectionName(link));
 });
 
+// POST /links/scrape
+router.post("/links/scrape", async (req, res): Promise<void> => {
+  const parsed = ScrapeUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const meta = await scrapeUrl(parsed.data.url);
+  res.json(meta);
+});
+
+// POST /links/search (semantic search via Gemini)
+router.post("/links/search", async (req, res): Promise<void> => {
+  const parsed = SearchLinksBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const rows = await db
+    .select(linkSelectColumns)
+    .from(linksTable)
+    .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id));
+
+  const matchedIds = await semanticSearch(
+    parsed.data.query,
+    rows.map((r) => ({
+      id: r.id,
+      url: r.url,
+      title: r.title,
+      description: r.description,
+      aiSummary: r.aiSummary,
+      tags: r.tags,
+    })),
+  );
+
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const ordered = matchedIds.map((id) => byId.get(id)).filter((r) => r !== undefined);
+
+  res.json(ordered.map((r) => formatLink(r)));
+});
+
+// POST /links/:id/ai-enrich
+router.post("/links/:id/ai-enrich", async (req, res): Promise<void> => {
+  const params = EnrichLinkParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [existing] = await db.select().from(linksTable).where(eq(linksTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Link not found" });
+    return;
+  }
+
+  const aiSummary = await generateSummary(existing.url, existing.title, existing.description);
+  const tags = await generateTags(existing.url, existing.title, existing.description, aiSummary);
+
+  const [updated] = await db
+    .update(linksTable)
+    .set({ aiSummary, tags })
+    .where(eq(linksTable.id, params.data.id))
+    .returning();
+
+  res.json(await attachCollectionName(updated));
+});
 export default router;
