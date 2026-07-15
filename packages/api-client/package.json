@@ -1,11 +1,9 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": true,
-    "outDir": "dist",
-    "rootDir": "src"
-  },
-  "include": ["src"]
+  "name": "@stashd/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@tanstack/react-query": "catalog:" },
+  "peerDependencies": { "react": ">=18" }
 }

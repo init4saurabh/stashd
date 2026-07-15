@@ -12,7 +12,8 @@
     "db:push": "pnpm --filter @stashd/db run push"
   },
   "devDependencies": {
-    "typescript": "~5.9.3",
-    "prettier": "^3.8.3"
+    "dotenv-cli": "^11.0.0",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3"
   }
 }
