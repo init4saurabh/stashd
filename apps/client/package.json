@@ -25,7 +25,8 @@
     "react-dom": "catalog:",
     "tailwind-merge": "catalog:",
     "wouter": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
