@@ -4,7 +4,7 @@ import { LayoutDashboard, Folder, Settings, Loader2, Sun, Moon } from "lucide-re
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
 
-export function SidebarNav() {
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
   const [location] = useLocation();
   const { data: stats } = useGetLinkStats();
   const { data: collections, isLoading: colsLoading } = useListCollections();
@@ -20,7 +20,7 @@ export function SidebarNav() {
   return (
     <div className="flex h-full w-64 flex-col bg-card border-r border-border">
       <div className="p-6">
-        <Link href="/">
+        <Link href="/" onClick={onNavigate}>
           <div className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-primary cursor-pointer">
             <div className="h-6 w-6 rounded bg-secondary rounded-tr-none flex items-center justify-center">
               <div className="h-2 w-2 rounded-full bg-white" />
@@ -33,7 +33,7 @@ export function SidebarNav() {
       <div className="flex-1 overflow-auto px-4 py-2 space-y-6">
         <div className="space-y-1">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} onClick={onNavigate}>
               <div
                 className={cn(
                   "flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer transition-colors",
@@ -65,7 +65,7 @@ export function SidebarNav() {
               </div>
             ) : (
               collections?.map((col) => (
-                <Link key={col.id} href={`/collections/${col.id}`}>
+                <Link key={col.id} href={`/collections/${col.id}`} onClick={onNavigate}>
                   <div
                     className={cn(
                       "flex items-center justify-between px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors",
