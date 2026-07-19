@@ -53,7 +53,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <main className="flex-1 relative overflow-auto">
+   <main className={cn("flex-1 relative overflow-auto", isMobile && "pt-14")}>
         {children}
         <SaveLinkModal />
       </main>

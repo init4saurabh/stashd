@@ -94,10 +94,7 @@ export default function Settings() {
                 <span>Version</span>
                 <span className="text-foreground">1.0.0</span>
               </div>
-              <div className="flex justify-between">
-                <span>AI model</span>
-                <span className="text-foreground">Gemini 1.5 Flash</span>
-              </div>
+              
               <div className="flex justify-between">
                 <span>Storage</span>
                 <span className="text-foreground">PostgreSQL</span>
