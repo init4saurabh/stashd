@@ -29,17 +29,18 @@ Save any link, and let AI organize it for you. Stashd scrapes page metadata, gen
 
 Stashd is a pnpm monorepo built around a single OpenAPI contract. The API is defined once in `api-spec/openapi.yaml`, and Orval generates a fully-typed Zod validation layer and React Query client from it — so the frontend and backend can never drift out of sync on request/response shapes.
 
+```text
 stashd/
 ├── apps/
-│ ├── client/ # React frontend
-│ └── server/ # Express API
+│   ├── client/          # React frontend
+│   └── server/          # Express API
 ├── packages/
-│ ├── db/ # Drizzle schema + DB client
-│ ├── api-schema/ # Generated Zod schemas
-│ └── api-client/ # Generated React Query hooks
+│   ├── db/               # Drizzle schema + DB client
+│   ├── api-schema/       # Generated Zod schemas
+│   └── api-client/       # Generated React Query hooks
 └── api-spec/
-└── openapi.yaml # Single source of truth for the API contract
-
+    └── openapi.yaml       # Single source of truth for the API contract
+```
 
 ## Getting started
 
