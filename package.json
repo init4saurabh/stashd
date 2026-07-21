@@ -2,6 +2,7 @@
   "name": "stashd",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.14.0",
   "license": "MIT",
   "scripts": {
     "typecheck:libs": "tsc --build",
@@ -12,8 +13,7 @@
     "db:push": "pnpm --filter @stashd/db run push"
   },
   "devDependencies": {
-    "dotenv-cli": "^11.0.0",
-    "prettier": "^3.8.3",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "prettier": "^3.8.3"
   }
 }
