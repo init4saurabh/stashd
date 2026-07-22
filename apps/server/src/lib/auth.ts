@@ -13,6 +13,9 @@ if (!secret) {
   throw new Error("BETTER_AUTH_SECRET environment variable is required.");
 }
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -24,5 +27,15 @@ export const auth = betterAuth({
   trustedOrigins: [baseURL],
   emailAndPassword: {
     enabled: true,
+  },
+  socialProviders: {
+    ...(googleClientId && googleClientSecret
+      ? {
+          google: {
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+          },
+        }
+      : {}),
   },
 });
