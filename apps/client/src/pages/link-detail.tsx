@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Clock, ExternalLink, Sparkles, Trash2, Loader2, Tags, Folder } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { getHostname } from "@/lib/utils";
 
 export default function LinkDetail() {
   const [, params] = useRoute("/link/:id");
@@ -130,7 +131,7 @@ export default function LinkDetail() {
                 <div className="flex items-center gap-3 mb-3">
                   {link.favicon && <img src={link.favicon} alt="" className="h-5 w-5 rounded-sm" />}
                   <span className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
-                    {link.siteName || new URL(link.url).hostname}
+                      {link.siteName || getHostname(link.url)}  
                   </span>
                   <span className="text-muted-foreground/30">•</span>
                   <span className="text-sm font-mono text-muted-foreground">
