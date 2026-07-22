@@ -26,7 +26,8 @@
     "tailwind-merge": "catalog:",
     "wouter": "catalog:",
     "zod": "catalog:",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "better-auth": "^1.6.23"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",

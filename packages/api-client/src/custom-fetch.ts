@@ -19,6 +19,7 @@ export async function customFetch<T = unknown>(
 ): Promise<T> {
   const response = await fetch(input, {
     ...init,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...init.headers },
   });
 
