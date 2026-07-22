@@ -17,7 +17,8 @@
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
     "@google/generative-ai": "^0.24.1",
-    "cheerio": "^1.1.2"
+    "cheerio": "^1.1.2",
+    "express-rate-limit": "^7.5.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

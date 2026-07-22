@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, inArray, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, linksTable, collectionsTable } from "@stashd/db";
 import { scrapeUrl } from "../lib/scraper";
 import { generateSummary, generateTags, semanticSearch } from "../lib/gemini";
+import { isValidHttpUrl } from "../lib/validate-url";
+import { externalCallLimiter, writeLimiter } from "../middleware/rate-limit";
 import {
   ListLinksQueryParams,
   CreateLinkBody,
@@ -131,7 +133,7 @@ router.get("/links", async (req, res): Promise<void> => {
 });
 
 // POST /links
-router.post("/links", async (req, res): Promise<void> => {
+router.post("/links", writeLimiter, async (req, res): Promise<void> => {
   const parsed = CreateLinkBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -139,6 +141,17 @@ router.post("/links", async (req, res): Promise<void> => {
   }
 
   const { url, tags, collectionId, ...rest } = parsed.data;
+
+  if (!isValidHttpUrl(url)) {
+    res.status(400).json({ error: "Please provide a valid http:// or https:// URL." });
+    return;
+  }
+
+  const [existing] = await db.select().from(linksTable).where(eq(linksTable.url, url));
+  if (existing) {
+    res.status(409).json({ error: "You've already saved this link.", existingId: existing.id });
+    return;
+  }
 
   const [link] = await db
     .insert(linksTable)
@@ -182,6 +195,54 @@ router.get("/links/stats", async (_req, res): Promise<void> => {
     collectionsCount,
     tagsCount: allTags.size,
   });
+});
+
+// POST /links/scrape
+router.post("/links/scrape", externalCallLimiter, async (req, res): Promise<void> => {
+  const parsed = ScrapeUrlBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  if (!isValidHttpUrl(parsed.data.url)) {
+    res.status(400).json({ error: "Please provide a valid http:// or https:// URL." });
+    return;
+  }
+
+  const meta = await scrapeUrl(parsed.data.url);
+  res.json(meta);
+});
+
+// POST /links/search (semantic search via Gemini)
+router.post("/links/search", externalCallLimiter, async (req, res): Promise<void> => {
+  const parsed = SearchLinksBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const rows = await db
+    .select(linkSelectColumns)
+    .from(linksTable)
+    .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id));
+
+  const matchedIds = await semanticSearch(
+    parsed.data.query,
+    rows.map((r) => ({
+      id: r.id,
+      url: r.url,
+      title: r.title,
+      description: r.description,
+      aiSummary: r.aiSummary,
+      tags: r.tags,
+    })),
+  );
+
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const ordered = matchedIds.map((id) => byId.get(id)).filter((r) => r !== undefined);
+
+  res.json(ordered.map((r) => formatLink(r)));
 });
 
 // GET /links/:id
@@ -288,51 +349,8 @@ router.patch("/links/:id/status", async (req, res): Promise<void> => {
   res.json(await attachCollectionName(link));
 });
 
-// POST /links/scrape
-router.post("/links/scrape", async (req, res): Promise<void> => {
-  const parsed = ScrapeUrlBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const meta = await scrapeUrl(parsed.data.url);
-  res.json(meta);
-});
-
-// POST /links/search (semantic search via Gemini)
-router.post("/links/search", async (req, res): Promise<void> => {
-  const parsed = SearchLinksBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  const rows = await db
-    .select(linkSelectColumns)
-    .from(linksTable)
-    .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id));
-
-  const matchedIds = await semanticSearch(
-    parsed.data.query,
-    rows.map((r) => ({
-      id: r.id,
-      url: r.url,
-      title: r.title,
-      description: r.description,
-      aiSummary: r.aiSummary,
-      tags: r.tags,
-    })),
-  );
-
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  const ordered = matchedIds.map((id) => byId.get(id)).filter((r) => r !== undefined);
-
-  res.json(ordered.map((r) => formatLink(r)));
-});
-
 // POST /links/:id/ai-enrich
-router.post("/links/:id/ai-enrich", async (req, res): Promise<void> => {
+router.post("/links/:id/ai-enrich", externalCallLimiter, async (req, res): Promise<void> => {
   const params = EnrichLinkParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -356,4 +374,5 @@ router.post("/links/:id/ai-enrich", async (req, res): Promise<void> => {
 
   res.json(await attachCollectionName(updated));
 });
+
 export default router;
