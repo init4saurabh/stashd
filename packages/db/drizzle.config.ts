@@ -1,3 +1,6 @@
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
+
 import { defineConfig } from "drizzle-kit";
 import path from "path";
 

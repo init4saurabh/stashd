@@ -1,6 +1,8 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -19,7 +21,10 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(cors({ origin: process.env.BETTER_AUTH_URL, credentials: true }));
+
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
