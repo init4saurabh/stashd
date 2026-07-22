@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, collectionsTable, linksTable } from "@stashd/db";
 import {
   CreateCollectionBody,
@@ -26,7 +26,9 @@ function formatCollection(
 }
 
 // GET /collections
-router.get("/collections", async (_req, res): Promise<void> => {
+router.get("/collections", async (req, res): Promise<void> => {
+  const userId = req.userId!;
+
   const rows = await db
     .select({
       id: collectionsTable.id,
@@ -38,6 +40,7 @@ router.get("/collections", async (_req, res): Promise<void> => {
     })
     .from(collectionsTable)
     .leftJoin(linksTable, eq(linksTable.collectionId, collectionsTable.id))
+    .where(eq(collectionsTable.userId, userId))
     .groupBy(collectionsTable.id)
     .orderBy(collectionsTable.name);
 
@@ -51,8 +54,12 @@ router.post("/collections", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.userId!;
 
-  const [col] = await db.insert(collectionsTable).values(parsed.data).returning();
+  const [col] = await db
+    .insert(collectionsTable)
+    .values({ ...parsed.data, userId })
+    .returning();
   res.status(201).json(formatCollection(col, 0));
 });
 
@@ -63,6 +70,7 @@ router.get("/collections/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [row] = await db
     .select({
@@ -75,7 +83,7 @@ router.get("/collections/:id", async (req, res): Promise<void> => {
     })
     .from(collectionsTable)
     .leftJoin(linksTable, eq(linksTable.collectionId, collectionsTable.id))
-    .where(eq(collectionsTable.id, params.data.id))
+    .where(and(eq(collectionsTable.id, params.data.id), eq(collectionsTable.userId, userId)))
     .groupBy(collectionsTable.id);
 
   if (!row) {
@@ -99,11 +107,12 @@ router.patch("/collections/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [col] = await db
     .update(collectionsTable)
     .set(parsed.data)
-    .where(eq(collectionsTable.id, params.data.id))
+    .where(and(eq(collectionsTable.id, params.data.id), eq(collectionsTable.userId, userId)))
     .returning();
 
   if (!col) {
@@ -126,10 +135,11 @@ router.delete("/collections/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [col] = await db
     .delete(collectionsTable)
-    .where(eq(collectionsTable.id, params.data.id))
+    .where(and(eq(collectionsTable.id, params.data.id), eq(collectionsTable.userId, userId)))
     .returning();
 
   if (!col) {

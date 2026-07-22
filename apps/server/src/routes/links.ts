@@ -90,6 +90,7 @@ router.get("/links", async (req, res): Promise<void> => {
     return;
   }
   const { status, collectionId, tag, sort, q } = parsed.data;
+  const userId = req.userId!;
 
   let query = db
     .select(linkSelectColumns)
@@ -97,7 +98,7 @@ router.get("/links", async (req, res): Promise<void> => {
     .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id))
     .$dynamic();
 
-  const conditions = [];
+  const conditions = [eq(linksTable.userId, userId)];
   if (status) conditions.push(eq(linksTable.status, status));
   if (collectionId) conditions.push(eq(linksTable.collectionId, collectionId));
   if (tag) conditions.push(sql`${tag} = ANY(${linksTable.tags})`);
@@ -113,9 +114,7 @@ router.get("/links", async (req, res): Promise<void> => {
     );
   }
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
-  }
+  query = query.where(and(...conditions));
 
   if (sort === "oldest") {
     query = query.orderBy(asc(linksTable.createdAt));
@@ -141,13 +140,17 @@ router.post("/links", writeLimiter, async (req, res): Promise<void> => {
   }
 
   const { url, tags, collectionId, ...rest } = parsed.data;
+  const userId = req.userId!;
 
   if (!isValidHttpUrl(url)) {
     res.status(400).json({ error: "Please provide a valid http:// or https:// URL." });
     return;
   }
 
-  const [existing] = await db.select().from(linksTable).where(eq(linksTable.url, url));
+  const [existing] = await db
+    .select()
+    .from(linksTable)
+    .where(and(eq(linksTable.url, url), eq(linksTable.userId, userId)));
   if (existing) {
     res.status(409).json({ error: "You've already saved this link.", existingId: existing.id });
     return;
@@ -155,14 +158,16 @@ router.post("/links", writeLimiter, async (req, res): Promise<void> => {
 
   const [link] = await db
     .insert(linksTable)
-    .values({ url, tags: tags ?? [], collectionId: collectionId ?? null, ...rest })
+    .values({ url, tags: tags ?? [], collectionId: collectionId ?? null, userId, ...rest })
     .returning();
 
   res.status(201).json(await attachCollectionName(link));
 });
 
 // GET /links/stats
-router.get("/links/stats", async (_req, res): Promise<void> => {
+router.get("/links/stats", async (req, res): Promise<void> => {
+  const userId = req.userId!;
+
   const [statsRow] = await db
     .select({
       total: sql<number>`COUNT(*)::int`,
@@ -174,13 +179,18 @@ router.get("/links/stats", async (_req, res): Promise<void> => {
         AND ${linksTable.createdAt} < NOW() - INTERVAL '${sql.raw(String(STALE_DAYS))} days'
       )::int`,
     })
-    .from(linksTable);
+    .from(linksTable)
+    .where(eq(linksTable.userId, userId));
 
   const [{ count: collectionsCount }] = await db
     .select({ count: sql<number>`COUNT(*)::int` })
-    .from(collectionsTable);
+    .from(collectionsTable)
+    .where(eq(collectionsTable.userId, userId));
 
-  const tagsQuery = await db.select({ tags: linksTable.tags }).from(linksTable);
+  const tagsQuery = await db
+    .select({ tags: linksTable.tags })
+    .from(linksTable)
+    .where(eq(linksTable.userId, userId));
   const allTags = new Set<string>();
   for (const r of tagsQuery) {
     for (const t of r.tags) allTags.add(t);
@@ -214,18 +224,20 @@ router.post("/links/scrape", externalCallLimiter, async (req, res): Promise<void
   res.json(meta);
 });
 
-// POST /links/search (semantic search via Gemini)
+// POST /links/search
 router.post("/links/search", externalCallLimiter, async (req, res): Promise<void> => {
   const parsed = SearchLinksBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const rows = await db
     .select(linkSelectColumns)
     .from(linksTable)
-    .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id));
+    .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id))
+    .where(eq(linksTable.userId, userId));
 
   const matchedIds = await semanticSearch(
     parsed.data.query,
@@ -252,12 +264,13 @@ router.get("/links/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [row] = await db
     .select(linkSelectColumns)
     .from(linksTable)
     .leftJoin(collectionsTable, eq(linksTable.collectionId, collectionsTable.id))
-    .where(eq(linksTable.id, params.data.id));
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)));
 
   if (!row) {
     res.status(404).json({ error: "Link not found" });
@@ -280,6 +293,7 @@ router.patch("/links/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const { tags, collectionId, ...rest } = parsed.data;
   const updates: Record<string, unknown> = { ...rest };
@@ -289,7 +303,7 @@ router.patch("/links/:id", async (req, res): Promise<void> => {
   const [link] = await db
     .update(linksTable)
     .set(updates)
-    .where(eq(linksTable.id, params.data.id))
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)))
     .returning();
 
   if (!link) {
@@ -307,10 +321,11 @@ router.delete("/links/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [link] = await db
     .delete(linksTable)
-    .where(eq(linksTable.id, params.data.id))
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)))
     .returning();
 
   if (!link) {
@@ -334,11 +349,12 @@ router.patch("/links/:id/status", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.userId!;
 
   const [link] = await db
     .update(linksTable)
     .set({ status: parsed.data.status })
-    .where(eq(linksTable.id, params.data.id))
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)))
     .returning();
 
   if (!link) {
@@ -356,8 +372,12 @@ router.post("/links/:id/ai-enrich", externalCallLimiter, async (req, res): Promi
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
 
-  const [existing] = await db.select().from(linksTable).where(eq(linksTable.id, params.data.id));
+  const [existing] = await db
+    .select()
+    .from(linksTable)
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Link not found" });
     return;
@@ -369,7 +389,7 @@ router.post("/links/:id/ai-enrich", externalCallLimiter, async (req, res): Promi
   const [updated] = await db
     .update(linksTable)
     .set({ aiSummary, tags })
-    .where(eq(linksTable.id, params.data.id))
+    .where(and(eq(linksTable.id, params.data.id), eq(linksTable.userId, userId)))
     .returning();
 
   res.json(await attachCollectionName(updated));
