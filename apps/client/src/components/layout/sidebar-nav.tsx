@@ -1,15 +1,22 @@
 import { Link, useLocation } from "wouter";
 import { useListCollections, useGetLinkStats, useListTags } from "@stashd/api-client";
-import { LayoutDashboard, Folder, Settings, Loader2, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Folder, Settings, Loader2, Sun, Moon, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/hooks/use-theme";
+import { useSession, signOut } from "@/lib/auth-client";
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { data: stats } = useGetLinkStats();
   const { data: collections, isLoading: colsLoading } = useListCollections();
   const { data: tags, isLoading: tagsLoading } = useListTags();
   const { resolvedTheme, setTheme } = useTheme();
+  const { data: session } = useSession();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   const navItems = [
     { href: "/", label: "Vault", icon: LayoutDashboard, count: stats?.total },
@@ -111,6 +118,27 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
           </div>
         </div>
       </div>
+
+      {session?.user && (
+        <div className="px-4 py-3 border-t border-border flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-7 w-7 rounded-full bg-secondary/10 text-secondary flex items-center justify-center text-xs font-semibold shrink-0">
+              {session.user.name?.[0]?.toUpperCase() ?? "?"}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{session.user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-destructive transition-colors shrink-0"
+            title="Log out"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center justify-between px-1">
