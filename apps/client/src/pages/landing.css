@@ -1,0 +1,21 @@
+.landing-page {
+  --lp-yellow: #FFD600;
+  --lp-orange: #FF6B35;
+  --lp-bg: #0A0A0A;
+  --lp-text-light: #F5F5F0;
+  --lp-text-gray: #888888;
+  --lp-text-muted: #555555;
+  --lp-text-dim: #444444;
+  --lp-border-dark: #2D2D2D;
+  --lp-border-subtle: #1D1D1D;
+  font-family: "Space Grotesk", sans-serif;
+  background: var(--lp-bg);
+  overflow-x: hidden;
+}
+
+.landing-page .font-grotesk {
+  font-family: "Space Grotesk", sans-serif;
+}
+.landing-page .font-ibm-mono {
+  font-family: "IBM Plex Mono", monospace;
+}
